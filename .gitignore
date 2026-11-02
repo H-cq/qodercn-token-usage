@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Generated dashboards, Canvas copies and runtime state
+dist/
+.qoder-token-usage/
+.qoder-credits/
+build/
+Qoder_CN_Token用量统计.html
+Qoder_CN_Token用量统计.canvas.tsx
+*.log
+.live_server.json
+
+# Private local handover notes (contain real project paths and usage numbers)
+工作交接文档.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

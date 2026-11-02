@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qoder Token 实时消耗</title>
+<style>
+  :root{
+    --bg:#0a0e16; --card:#101725; --card2:#0c1220; --border:#1d2738;
+    --text:#e8edf5; --muted:#7e8aa0; --muted2:#5b6577;
+    --accent:#7c5cff; --accent2:#4c8dff; --cost:#34d399; --free:#f59e0b;
+    --danger:#f87171; --warn:#fbbf24;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:radial-gradient(1100px 500px at 18% -8%, rgba(124,92,255,.10), transparent 60%),
+               radial-gradient(900px 420px at 85% -6%, rgba(76,141,255,.08), transparent 60%),
+               var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:1280px;margin:0 auto;padding:24px 22px 40px}
+  a{color:#8fb0ff;text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .hd{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .hd-left{display:flex;align-items:center;gap:14px;min-width:0;flex:1 1 340px}
+  .hd-left>div{min-width:0}
+  .logo{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#7c5cff,#4c8dff);box-shadow:0 6px 18px rgba(124,92,255,.35);flex:none}
+  h1{font-size:19px;margin:0;letter-spacing:.01em;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .sub{font-size:12px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere;line-height:1.6}
+  .sub b{color:#a8b3c7;font-weight:600}
+
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--cost);display:inline-block;flex:none;
+    box-shadow:0 0 0 0 rgba(52,211,153,.5);animation:pulse 1.8s infinite}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(52,211,153,.45)}
+    70%{box-shadow:0 0 0 7px rgba(52,211,153,0)}
+    100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}
+  }
+  .live-dot.off{background:var(--danger);animation:none}
+
+  .hd-right{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  select{background:var(--card2);color:#cdd6e6;border:1px solid var(--border);border-radius:10px;
+    padding:8px 10px;font-family:inherit;font-size:12px;max-width:330px;outline:none;cursor:pointer}
+  select:focus{border-color:rgba(124,92,255,.7)}
+  .btn{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border);
+    color:#c6d0e2;border-radius:10px;padding:8px 12px;font-size:12px;white-space:nowrap;cursor:pointer}
+  .btn:hover{border-color:rgba(124,92,255,.6);color:#fff;text-decoration:none}
+
+  .statusbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;
+    font-size:11.5px;color:var(--muted2)}
+  .statusbar .dot{width:6px;height:6px;border-radius:50%;background:var(--cost);display:inline-block;margin-right:6px}
+  .statusbar .dot.off{background:var(--danger)}
+  .statusbar .spacer{flex:1}
+  .statusbar .fixed{color:var(--warn)}
+
+  .note{margin-top:12px;padding:10px 14px;border:1px solid rgba(245,158,11,.24);border-radius:12px;
+    background:rgba(245,158,11,.055);font-size:11.6px;color:#cbb98f;line-height:1.8}
+  .note b{color:#f5c451;font-weight:600}
+  .note.bad{border-color:rgba(248,113,113,.30);background:rgba(248,113,113,.06);color:#d9a5a5}
+  .note.bad b{color:#fca5a5}
+
+  .kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:11px;margin:16px 0 14px}
+  .kpi{background:linear-gradient(180deg,rgba(124,92,255,.07),transparent 58%),var(--card);
+    border:1px solid var(--border);border-radius:15px;padding:13px 14px;min-width:0}
+  .kpi .k-label{font-size:10.5px;color:var(--muted);letter-spacing:.05em;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .kpi .k-val{font-size:22px;font-weight:700;margin-top:7px;font-variant-numeric:tabular-nums;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+  .kpi .k-sub{font-size:10.8px;color:var(--muted2);margin-top:6px;line-height:1.5;min-height:32px}
+  .kpi.hl .k-val{background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .kpi.cost .k-val{color:var(--cost)}
+  .kpi.warn .k-val{color:var(--warn)}
+  .kpi.danger .k-val{color:var(--danger)}
+
+  .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:13px;margin-bottom:13px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px 17px;min-width:0}
+  .col-4{grid-column:span 4}.col-6{grid-column:span 6}.col-8{grid-column:span 8}.col-12{grid-column:span 12}
+  .card-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .card-hd h2{font-size:13.5px;margin:0;font-weight:600;color:#d7deea}
+  .hint{font-size:11px;color:var(--muted2)}
+
+  .spark-block{display:flex;flex-direction:column;gap:4px}
+  .spark-hd{display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted2);letter-spacing:.07em}
+  .spark{height:62px;width:100%;min-width:0}
+  .spark svg{display:block;width:100%;height:62px}
+  .spark-axis{display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted2);
+    font-variant-numeric:tabular-nums;margin-top:1px}
+
+  .rate-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;padding-top:12px;
+    border-top:1px solid rgba(29,39,56,.8)}
+  .rate-row>div{min-width:0}
+  .rate-row b{display:block;font-size:14.5px;color:#dbe3f0;font-variant-numeric:tabular-nums;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rate-row span{display:block;font-size:10px;color:var(--muted2);margin-top:3px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+
+  .kv{display:flex;flex-direction:column;gap:1px}
+  .kv-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:7px 0;
+    border-bottom:1px solid rgba(29,39,56,.55);font-size:12px}
+  .kv-row:last-child{border-bottom:0}
+  .kv-row .kv-k{color:var(--muted)}
+  .kv-row .kv-v{color:#dbe3f0;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .kv-row .kv-v small{color:var(--muted2);font-size:10.5px;margin-left:5px}
+  .free-hit{color:var(--free)}
+
+  .bar-row{display:grid;grid-template-columns:120px minmax(0,1fr) 86px;align-items:center;gap:9px;padding:5px 0}
+  .bar-label{font-size:11.5px;color:#c9d2e2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-track{height:14px;background:var(--card2);border:1px solid rgba(29,39,56,.7);border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#7c5cff,#60a5fa)}
+  .bar-val{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right;line-height:1.35}
+  .bar-val b{display:block;color:#bfc9da;font-weight:600}
+  .tag{display:inline-block;font-size:9px;color:#241a05;background:var(--free);border-radius:4px;
+    padding:0 4px;margin-left:5px;vertical-align:1px;font-weight:600}
+  .tag.soft{background:rgba(245,158,11,.18);color:#f5c451}
+
+  .table-wrap{overflow:auto;max-height:380px;border:1px solid rgba(29,39,56,.7);border-radius:12px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{position:sticky;top:0;z-index:1;text-align:right;color:var(--muted);font-weight:500;font-size:10.5px;
+    white-space:nowrap;letter-spacing:.05em;padding:9px 12px;background:#0d1424;border-bottom:1px solid var(--border)}
+  thead th:first-child,thead th:nth-child(2){text-align:left}
+  tbody td{text-align:right;padding:8px 12px;border-bottom:1px solid rgba(29,39,56,.55);
+    font-variant-numeric:tabular-nums;color:#c4cede;white-space:nowrap}
+  tbody td:first-child,tbody td:nth-child(2){text-align:left}
+  tbody tr{cursor:pointer}
+  tbody tr:hover td{background:rgba(124,92,255,.06)}
+  tbody tr.on td{background:rgba(124,92,255,.12)}
+  tbody tr:last-child td{border-bottom:0}
+  .sess-name{display:block;color:#e8edf5;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+  .sess-id{display:block;color:var(--muted2);font-size:10px;margin-top:2px}
+  .sess-last{display:block;color:#aab5c7}
+  .sess-ago{display:block;color:var(--muted2);font-size:10px;margin-top:2px}
+
+  .empty{color:var(--muted2);font-size:12px;padding:20px 0;text-align:center}
+  .foot{margin-top:16px;padding:13px 15px;border:1px dashed var(--border);border-radius:12px;
+    font-size:11.4px;color:var(--muted2);line-height:1.9}
+  .foot b{color:var(--muted)}
+  .foot code{padding:1px 5px;border-radius:5px;background:rgba(0,0,0,.28);color:#c9d2e2;font-size:10.8px}
+
+  @media (max-width:1080px){
+    .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .col-8,.col-6,.col-4{grid-column:1/-1}
+  }
+  @media (max-width:640px){
+    .page{padding:18px 14px 32px}
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .kpi{padding:11px 12px}
+    .kpi .k-val{font-size:20px}
+    .kpi .k-sub{min-height:0}
+    .bar-row{grid-template-columns:92px minmax(0,1fr) 74px}
+    .rate-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .hd-right{width:100%}
+    select{flex:1;max-width:none;min-width:0}
+    thead th,tbody td{padding:7px 9px}
+    .sess-name{max-width:130px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="hd">
+    <div class="hd-left">
+      <div class="logo">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="13" width="4" height="8" rx="1.4" fill="#fff" opacity=".7"/>
+          <rect x="10" y="8" width="4" height="13" rx="1.4" fill="#fff" opacity=".88"/>
+          <rect x="17" y="3" width="4" height="18" rx="1.4" fill="#fff"/>
+        </svg>
+      </div>
+      <div>
+        <h1><span class="live-dot" id="liveDot"></span>Qoder Token 实时消耗</h1>
+        <div class="sub"><b id="sessionLabel">正在连接…</b> ｜ 更新于 <b id="updatedAt">—</b> ｜ 时区：北京时间</div>
+      </div>
+    </div>
+    <div class="hd-right">
+      <select id="sessionSel" title="选择要查看的会话"></select>
+      <a class="btn" href="/history" target="_blank" rel="noopener">全量历史 ↗</a>
+    </div>
+  </header>
+
+  <div class="statusbar">
+    <span><span class="dot" id="statusDot"></span><span id="statusLabel">连接中…</span></span>
+    <span>·</span>
+    <span id="meta">—</span>
+    <span class="spacer"></span>
+    <span id="followNote">自动跟随最近活跃会话</span>
+  </div>
+
+  <div class="note bad" id="sourceNote" hidden></div>
+
+  <div class="note">
+    <b>口径</b> Tokens = <code>context_usage_ratio × <span id="windowVal">200,000</span></code> 逐次往返求和（含子代理）；
+    Credits 为转录中客户端上报的实测值。<b>免费/零扣费模型同样计入 Tokens</b>，其 Credits 按 0 累加，
+    页面单独标出占比。输出与缓存 token 在 CN 桌面端转录中不记录，故不展示。
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <div class="card col-8">
+      <div class="card-hd"><h2>当前会话 · 最近 30 分钟</h2><span class="hint" id="sparkHint">每分钟</span></div>
+      <div class="spark-block">
+        <div class="spark-hd"><span>TOKENS / MIN</span><span id="sparkTokMax">—</span></div>
+        <div id="sparkTokens" class="spark"></div>
+        <div class="spark-hd"><span>CREDITS / MIN</span><span id="sparkCrMax">—</span></div>
+        <div id="sparkCredits" class="spark"></div>
+        <div class="spark-axis" id="sparkAxis"><span>—</span><span>—</span><span>—</span></div>
+      </div>
+      <div class="rate-row">
+        <div><b id="rate5mTok">—</b><span>5 分钟 tokens/分</span></div>
+        <div><b id="rate5mCr">—</b><span>5 分钟 Credits/分</span></div>
+        <div><b id="rate1mTok">—</b><span>最近 1 分钟 tokens</span></div>
+        <div><b id="ctxVal">—</b><span>当前上下文占用</span></div>
+      </div>
+    </div>
+
+    <div class="card col-4">
+      <div class="card-hd"><h2>今日概览</h2><span class="hint" id="todayHint">—</span></div>
+      <div class="kv" id="todayRows"></div>
+    </div>
+
+    <div class="card col-6">
+      <div class="card-hd"><h2>今日模型</h2><span class="hint">按 Tokens · 含免费模型</span></div>
+      <div id="modelBars"></div>
+    </div>
+
+    <div class="card col-6">
+      <div class="card-hd"><h2>今日项目</h2><span class="hint">按 Tokens</span></div>
+      <div id="projectBars"></div>
+    </div>
+
+    <div class="card col-12">
+      <div class="card-hd"><h2>最近会话</h2><span class="hint">点击行可固定查看；选「自动」恢复跟随</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>会话</th><th>最近活动</th><th>累计 Tokens</th><th>累计 Credits</th>
+              <th>今日 Tokens</th><th>今日 Credits</th>
+            </tr>
+          </thead>
+          <tbody id="sessionBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <b>说明</b> Tokens 为推导值（上下文窗口按 <span id="footWindow">200,000</span> 计），Credits 为实测值；两者都不含输出/缓存 token。
+    数据仅在本机读取与展示，服务只监听 <code>127.0.0.1</code>，不上传任何内容；关闭置顶小窗即停止服务。
+    <span id="footMeta">—</span>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const state = { pinned: '', busy: false, online: null, lastSig: '', sessSig: '', last: null };
+
+function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('en-US'); }
+function compact(n) {
+  n = Number(n) || 0;
+  if (n >= 1e8) return (n / 1e8).toFixed(2).replace(/\.?0+$/, '') + ' 亿';
+  if (n >= 1e4) return (n / 1e4).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + ' 万';
+  return fmt(n);
+}
+function credits(n) {
+  return (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+function rateCredits(n) {
+  return (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function pct(x) { return ((Number(x) || 0) * 100).toFixed(1) + '%'; }
+function ago(sec) {
+  sec = Number(sec) || 0;
+  if (sec < 60) return sec + ' 秒前';
+  if (sec < 3600) return Math.floor(sec / 60) + ' 分钟前';
+  if (sec < 86400) return Math.floor(sec / 3600) + ' 小时前';
+  return Math.floor(sec / 86400) + ' 天前';
+}
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function svgEl(tag, attrs, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  return e;
+}
+function setText(id, text) { $(id).textContent = text; }
+function showSourceNote(text, bad) {
+  const n = $('sourceNote');
+  n.hidden = !text;
+  n.textContent = text || '';
+  n.classList.toggle('bad', !!bad);
+}
+
+function buildKpis() {
+  const defs = [
+    { id: 'kSessionTok', label: '本会话 TOKENS（推导）', cls: 'hl' },
+    { id: 'kSessionCr', label: '本会话 CREDITS（实测）', cls: 'cost' },
+    { id: 'kTodayTok', label: '今日 TOKENS（推导）', cls: '' },
+    { id: 'kTodayCr', label: '今日 CREDITS（实测）', cls: 'cost' },
+    { id: 'kCtx', label: '当前上下文占用', cls: '' },
+    { id: 'kRate', label: '5 分钟速率', cls: '' }
+  ];
+  const host = $('kpis');
+  host.textContent = '';
+  for (const d of defs) {
+    const card = el('div', 'kpi ' + d.cls);
+    card.appendChild(el('div', 'k-label', d.label));
+    const val = el('div', 'k-val', '—'); val.id = d.id + 'Val';
+    const sub = el('div', 'k-sub', '—'); sub.id = d.id + 'Sub';
+    card.appendChild(val); card.appendChild(sub);
+    host.appendChild(card);
+  }
+}
+
+function renderHeader(s) {
+  const sess = s.session || {};
+  setText('sessionLabel', (sess.label || '—') + ' · ' + (sess.short || '—'));
+  setText('updatedAt', (s.generatedAt || '').slice(11) || '—');
+  setText('meta', s.files + ' 个转录 · ' + fmt(s.records) + ' 条往返 · 本地只读');
+  setText('windowVal', fmt(s.window || 200000));
+  setText('footWindow', fmt(s.window || 200000));
+  const dot = $('liveDot');
+  dot.classList.toggle('off', !state.online);
+  const f = $('followNote');
+  if (state.pinned) {
+    f.innerHTML = '<span class="fixed">已固定该会话</span> · <a href="#" id="resumeFollow">恢复自动跟随</a>';
+  } else {
+    f.textContent = '自动跟随最近活跃会话';
+  }
+  $('sessionSel').value = state.pinned;
+  setText('footMeta', ' 当前数据源：' + s.source + ' · 生成于 ' + s.generatedAt + '。');
+}
+
+function renderKpis(s) {
+  const sess = s.session, today = s.today;
+  if (!sess || !today) return;
+  $('kSessionTokVal').textContent = compact(sess.tokens);
+  $('kSessionTokSub').textContent = '精确 ' + fmt(sess.tokens) + ' · 子代理占 ' + pct(sess.subShare);
+  $('kSessionCrVal').textContent = credits(sess.credits);
+  $('kSessionCrSub').textContent = '累计 ' + fmt(sess.trips) + ' 次往返 · 均 ' + rateCredits(sess.credits / Math.max(1, sess.trips)) + '/次';
+  $('kTodayTokVal').textContent = compact(today.tokens);
+  $('kTodayTokSub').textContent = '免费/零扣费 ' + compact(today.freeTokens) + '（' + pct(today.freeShare) + '）';
+  $('kTodayCrVal').textContent = credits(today.credits);
+  $('kTodayCrSub').textContent = fmt(today.trips) + ' 次往返 · ' + today.sessions + ' 个会话 · ' + today.projects + ' 个项目';
+  const ctx = Number(sess.contextPct) || 0;
+  $('kCtxVal').textContent = ctx.toFixed(1) + '%';
+  $('kCtxSub').textContent = (sess.lastModel || '—') + ' · 最近一次主线往返';
+  const kCtx = $('kCtxVal').closest('.kpi');
+  kCtx.classList.toggle('danger', ctx >= 85);
+  kCtx.classList.toggle('warn', ctx >= 65 && ctx < 85);
+  $('kRateVal').textContent = compact(sess.rate5m.tokensPerMin) + '/min';
+  $('kRateSub').textContent = rateCredits(sess.rate5m.creditsPerMin) + ' Credits/min · ' +
+    sess.rate5m.trips + ' 次往返';
+}
+
+function renderRateRow(s) {
+  const sess = s.session;
+  setText('rate5mTok', compact(sess.rate5m.tokensPerMin));
+  setText('rate5mCr', rateCredits(sess.rate5m.creditsPerMin));
+  setText('rate1mTok', fmt(sess.rate1m.tokens));
+  setText('ctxVal', Number(sess.contextPct).toFixed(1) + '%');
+}
+
+function drawBars(host, points, key, color) {
+  host.textContent = '';
+  if (!points || !points.length) { host.appendChild(el('div', 'empty', '暂无数据')); return; }
+  const W = 600, H = 72, n = points.length;
+  const max = Math.max(1, ...points.map(p => Number(p[key]) || 0));
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'none' });
+  const step = W / n;
+  const bw = Math.max(2, step - 2);
+  points.forEach((p, i) => {
+    const v = Number(p[key]) || 0;
+    const h = Math.max(v > 0 ? 1.5 : 0, (v / max) * (H - 8));
+    const x = i * step + 1;
+    const y = H - 2 - h;
+    const rect = svgEl('rect', {
+      x: x.toFixed(1), y: y.toFixed(1), width: bw.toFixed(1), height: h.toFixed(1),
+      rx: 1.5, fill: color, opacity: v > 0 ? '0.85' : '0.18'
+    });
+    const title = svgEl('title', {}, `${p.t} · ${compact(p.tokens)} tokens · ${credits(p.credits)} Credits`);
+    rect.appendChild(title);
+    svg.appendChild(rect);
+  });
+  svg.appendChild(svgEl('line', { x1: 0, y1: H - 1, x2: W, y2: H - 1, stroke: '#1d2738', 'stroke-width': 1 }));
+  host.appendChild(svg);
+}
+
+function drawLine(host, points, key, color) {
+  host.textContent = '';
+  if (!points || !points.length) { host.appendChild(el('div', 'empty', '暂无数据')); return; }
+  const W = 600, H = 72, n = points.length;
+  const max = Math.max(1, ...points.map(p => Number(p[key]) || 0));
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'none' });
+  const step = n > 1 ? W / (n - 1) : W;
+  const coords = points.map((p, i) => {
+    const v = Number(p[key]) || 0;
+    return [i * step, H - 2 - (v / max) * (H - 10)];
+  });
+  const path = coords.map((c, i) => (i ? 'L' : 'M') + c[0].toFixed(1) + ' ' + c[1].toFixed(1)).join(' ');
+  svg.appendChild(svgEl('line', { x1: 0, y1: H - 1, x2: W, y2: H - 1, stroke: '#1d2738', 'stroke-width': 1 }));
+  svg.appendChild(svgEl('path', {
+    d: path + ` L ${W} ${H - 1} L 0 ${H - 1} Z`, fill: 'rgba(52,211,153,.10)', stroke: 'none'
+  }));
+  svg.appendChild(svgEl('path', { d: path, fill: 'none', stroke: color, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }));
+  points.forEach((p, i) => {
+    const c = coords[i];
+    const dot = svgEl('circle', { cx: c[0].toFixed(1), cy: c[1].toFixed(1), r: 2.2, fill: color });
+    dot.appendChild(svgEl('title', {}, `${p.t} · ${credits(p.credits)} Credits · ${compact(p.tokens)} tokens`));
+    svg.appendChild(dot);
+  });
+  host.appendChild(svg);
+}
+
+function renderSpark(s) {
+  const pts = s.spark || [];
+  drawBars($('sparkTokens'), pts, 'tokens', '#8b6cff');
+  drawLine($('sparkCredits'), pts, 'credits', '#34d399');
+  const maxTok = Math.max(0, ...pts.map(p => p.tokens));
+  const maxCr = Math.max(0, ...pts.map(p => p.credits));
+  setText('sparkTokMax', '峰值 ' + compact(maxTok));
+  setText('sparkCrMax', '峰值 ' + credits(maxCr));
+  if (pts.length) {
+    $('sparkAxis').innerHTML = '';
+    var times = [pts[0].t, pts[Math.floor(pts.length / 2)].t, pts[pts.length - 1].t];
+    times.forEach(t => $('sparkAxis').appendChild(el('span', '', t)));
+  }
+  setText('sparkHint', '每分钟 · ' + (s.session ? s.session.short : ''));
+}
+
+function kvRow(k, v, sub, free) {
+  const row = el('div', 'kv-row');
+  row.appendChild(el('span', 'kv-k', k));
+  const vv = el('span', 'kv-v' + (free ? ' free-hit' : ''), v);
+  if (sub) {
+    const small = el('small', '', sub);
+    vv.appendChild(small);
+  }
+  row.appendChild(vv);
+  return row;
+}
+
+function renderToday(s) {
+  const t = s.today;
+  const host = $('todayRows');
+  host.textContent = '';
+  host.appendChild(kvRow('Tokens（推导）', compact(t.tokens), fmt(t.tokens)));
+  host.appendChild(kvRow('Credits（实测）', credits(t.credits), '原始 ' + credits(t.origCredits)));
+  host.appendChild(kvRow('免费/零扣费', compact(t.freeTokens), pct(t.freeShare) + ' · ' + fmt(t.freeTrips) + ' 次', t.freeTokens > 0));
+  host.appendChild(kvRow('子代理 Tokens', compact(t.subTokens), pct(t.subShare) + ' · ' + fmt(t.subTrips) + ' 次'));
+  host.appendChild(kvRow('往返次数', fmt(t.trips), '单次均 ' + compact(t.avgTrip)));
+  host.appendChild(kvRow('会话 / 项目', t.sessions + ' / ' + t.projects, '今日自然日'));
+  setText('todayHint', s.today.trips ? '自今日 00:00 起' : '今日暂无记录');
+}
+
+function renderBarList(hostId, rows, kind) {
+  const host = $(hostId);
+  host.textContent = '';
+  if (!rows || !rows.length) { host.appendChild(el('div', 'empty', '暂无数据')); return; }
+  const max = Math.max(1, ...rows.map(r => r.tokens));
+  rows.forEach(r => {
+    const row = el('div', 'bar-row');
+    const label = el('span', 'bar-label', r.label);
+    if (r.freeTrips > 0) {
+      label.appendChild(el('span', 'tag' + (r.freeTrips === r.trips ? '' : ' soft'),
+        r.freeTrips === r.trips ? '免费' : '含免费'));
+    }
+    const track = el('div', 'bar-track');
+    const fill = el('div', 'bar-fill');
+    fill.style.width = Math.max(r.tokens > 0 ? 2 : 0, (r.tokens / max) * 100).toFixed(1) + '%';
+    if (kind === 'project') fill.style.background = 'linear-gradient(90deg,#4c8dff,#22d3ee)';
+    track.appendChild(fill);
+    const val = el('div', 'bar-val');
+    val.appendChild(el('b', '', compact(r.tokens)));
+    val.appendChild(el('span', '', credits(r.credits) + ' C'));
+    row.appendChild(label); row.appendChild(track); row.appendChild(val);
+    host.appendChild(row);
+  });
+}
+
+function renderSessions(s) {
+  const rows = s.sessions || [];
+  const sig = rows.map(x => [x.id, x.tokens, x.credits, x.todayTokens, x.todayCredits, x.lastTs, x.selected].join(':')).join('|') + '|' + state.pinned;
+  const body = $('sessionBody');
+  if (sig !== state.lastSig) {
+    state.lastSig = sig;
+    const scroll = body.closest('.table-wrap').scrollTop;
+    body.textContent = '';
+    rows.forEach(row => {
+      const tr = el('tr', row.selected ? 'on' : '');
+      tr.dataset.session = row.id;
+      const name = el('td');
+      name.appendChild(el('span', 'sess-name', row.label));
+      name.appendChild(el('span', 'sess-id', row.short));
+      const last = el('td');
+      last.appendChild(el('span', 'sess-last', row.lastTs));
+      const agoEl = el('span', 'sess-ago', ago(row.lastAgo));
+      last.appendChild(agoEl);
+      tr._agoEl = agoEl;
+      const cells = [
+        name, last,
+        el('td', '', fmt(row.tokens)),
+        el('td', '', credits(row.credits)),
+        el('td', '', compact(row.todayTokens)),
+        el('td', '', credits(row.todayCredits))
+      ];
+      cells.forEach(c => tr.appendChild(c));
+      tr.addEventListener('click', () => {
+        state.pinned = row.id;
+        state.lastSig = '';
+        tick();
+      });
+      body.appendChild(tr);
+    });
+    if (!body.children.length) {
+      const tr = el('tr');
+      const td = el('td', 'empty', '暂无会话');
+      td.colSpan = 6;
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+    body.closest('.table-wrap').scrollTop = scroll;
+  }
+  // “x 秒前”每秒都在变，只更新文本，避免整张表每秒重建。
+  const byId = new Map(rows.map(x => [x.id, x]));
+  body.querySelectorAll('tr[data-session]').forEach(tr => {
+    const row = byId.get(tr.dataset.session);
+    if (row && tr._agoEl) tr._agoEl.textContent = ago(row.lastAgo);
+  });
+}
+
+function renderSessionSelect(s) {
+  const rows = s.sessions || [];
+  const sig = rows.map(x => x.id + ':' + x.label).join('|');
+  const sel = $('sessionSel');
+  if (sig !== state.sessSig) {
+    state.sessSig = sig;
+    const current = state.pinned;
+    sel.textContent = '';
+    const auto = el('option', '', '自动跟随最近活跃');
+    auto.value = '';
+    sel.appendChild(auto);
+    rows.forEach(r => {
+      const opt = el('option', '', `${r.label} · ${r.short}`);
+      opt.value = r.id;
+      sel.appendChild(opt);
+    });
+    sel.value = current;
+  }
+  sel.value = state.pinned;
+}
+
+function renderEmpty(s) {
+  setText('sessionLabel', '等待第一条对话…');
+  setText('updatedAt', s && s.generatedAt ? (s.generatedAt.slice(11) || '—') : '—');
+  setText('meta', s ? s.files + ' 个转录 · ' + fmt(s.records) + ' 条往返 · 本地只读' : '—');
+  setText('footMeta', s ? ' 当前数据源：' + s.source + ' · 生成于 ' + s.generatedAt + '。' : '');
+  setText('windowVal', fmt((s && s.window) || 200000));
+  setText('footWindow', fmt((s && s.window) || 200000));
+  setText('followNote', '自动跟随最近活跃会话');
+  const missing = !!(s && s.sourceExists === false);
+  showSourceNote(
+    missing
+      ? '未找到转录目录：' + (s.source || '—') + '。请确认 Qoder CN 已产生对话，或用 --root / QODER_CN_PROJECTS 指定目录。'
+      : '已扫描 ' + ((s && s.files) || 0) + ' 个转录文件，还没有 usage 记录。发一条 Qoder 对话后会自动出现。',
+    missing
+  );
+  ['kSessionTok', 'kSessionCr', 'kTodayTok', 'kTodayCr', 'kCtx', 'kRate'].forEach(id => {
+    const val = $(id + 'Val');
+    if (val) val.textContent = '—';
+    const sub = $(id + 'Sub');
+    if (sub) sub.textContent = '—';
+  });
+  ['sparkTokens', 'sparkCredits', 'modelBars', 'projectBars'].forEach(id => {
+    const host = $(id);
+    if (host) host.innerHTML = '<div class="empty">暂无数据</div>';
+  });
+  const todayRows = $('todayRows');
+  if (todayRows) todayRows.innerHTML = '<div class="empty">今日暂无记录</div>';
+  const body = $('sessionBody');
+  if (body) body.innerHTML = '<tr><td class="empty" colspan="6">暂无会话</td></tr>';
+  setText('sparkTokMax', '—');
+  setText('sparkCrMax', '—');
+  setText('sparkHint', '每分钟');
+  setText('todayHint', '今日暂无记录');
+  $('sparkAxis').innerHTML = '<span>—</span><span>—</span><span>—</span>';
+  const sel = $('sessionSel');
+  sel.textContent = '';
+  const auto = el('option', '', '自动跟随最近活跃');
+  auto.value = '';
+  sel.appendChild(auto);
+  state.lastSig = '';
+  state.sessSig = '';
+}
+
+function render(s) {
+  if (!s || !s.session) {
+    renderEmpty(s);
+    return;
+  }
+  showSourceNote('');
+  if (state.pinned && !(s.sessions || []).some(x => x.id === state.pinned)) {
+    state.pinned = '';
+  }
+  state.last = s;
+  renderSessionSelect(s);
+  renderHeader(s);
+  renderKpis(s);
+  renderRateRow(s);
+  renderSpark(s);
+  renderToday(s);
+  renderBarList('modelBars', s.today.topModels, 'model');
+  renderBarList('projectBars', s.today.topProjects, 'project');
+  renderSessions(s);
+}
+
+function setOnline(ok) {
+  state.online = ok;
+  const dot = $('statusDot');
+  dot.classList.toggle('off', !ok);
+  setText('statusLabel', ok ? '实时 · 1 秒刷新' : '连接中断 · 重试中…');
+  $('liveDot').classList.toggle('off', !ok);
+}
+
+async function tick() {
+  if (state.busy) return;
+  state.busy = true;
+  try {
+    const url = '/api/live' + (state.pinned ? '?session=' + encodeURIComponent(state.pinned) : '');
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const snap = await resp.json();
+    setOnline(true);
+    render(snap);
+  } catch (err) {
+    setOnline(false);
+  } finally {
+    state.busy = false;
+  }
+}
+
+$('sessionSel').addEventListener('change', e => {
+  state.pinned = e.target.value;
+  state.lastSig = '';
+  tick();
+});
+
+document.addEventListener('click', e => {
+  if (e.target && e.target.id === 'resumeFollow') {
+    e.preventDefault();
+    state.pinned = '';
+    state.lastSig = '';
+    tick();
+  }
+});
+
+buildKpis();
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
