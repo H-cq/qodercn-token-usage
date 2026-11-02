@@ -20,7 +20,7 @@
 ### Windows
 
 1. 安装 [Python 3.9+](https://www.python.org/downloads/)，安装时勾选 **Add Python to PATH**。
-2. 下载本仓库 ZIP，或 `git clone` 本仓库地址。
+2. 下载本仓库 ZIP，或执行 `git clone https://github.com/H-cq/qodercn-token-usage.git`。
 3. 双击 `启动Token实时面板.cmd`（或英文名 `start.cmd`）。
 4. 启动后会自动打开浏览器，并在屏幕右上角显示置顶小窗。
 5. 点小窗右上角 `×` 停止服务。
